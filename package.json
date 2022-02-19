@@ -1,0 +1,18 @@
+{
+  "name": "game",
+  "version": "1.0.0",
+  "main": "index.js",
+  "author": "xharris <xhh950@gmail.com>",
+  "license": "MIT",
+  "scripts": {
+    "start": "yarn run start:win",
+    "start:win": "..\\love-11.3-win64\\lovec.exe .",
+    "start:linux": "~/Applications/love-*.AppImage .",
+    "transpile": "tstl"
+  },
+  "devDependencies": {
+    "lua-types": "^2.10.1",
+    "love-typescript-definitions": "^0.22.1",
+    "typescript-to-lua": "^0.42.0"
+  }
+}
