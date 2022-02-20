@@ -144,7 +144,7 @@ function M.sort(names, sortf)
     if testflag(bitset, enta.bitset) and testflag(bitset, entb.bitset) then 
       return sortf(enta, entb)
     else 
-      return true
+      return false
     end
   end)
 end

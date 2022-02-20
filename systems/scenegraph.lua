@@ -6,10 +6,12 @@ local floor = function(x)
   return math.floor(x + 0.5)
 end
 
+M.renders = 0
+
 function M.draw()
   local needs_sorting
-
-  for entity, tf, node in ecs.filter('transform', 'node') do 
+  M.renders = 0
+  for entity, node in ecs.filter('node') do 
     if node._last_z ~= node.z then 
       node._last_z = node.z 
       needs_sorting = true
@@ -19,13 +21,24 @@ function M.draw()
       local transform = M.getTransform(entity)
 
       -- draw renderable 
-      if game.inside(transform:transformPoint(0,0)) then 
-        love.graphics.replaceTransform(transform)
+      if not transform then 
         love.graphics.draw(node.renderable)
+
+      elseif 
+        game.inside(transform:transformPoint(0,0)) and 
+        game.inside(transform:transformPoint(node.size[1],node.size[2])) and 
+        game.inside(transform:transformPoint(node.size[1],0)) and 
+        game.inside(transform:transformPoint(0,node.size[2])) 
+      then 
+        love.graphics.push()
+        love.graphics.applyTransform(transform)
+        love.graphics.draw(node.renderable)
+        love.graphics.pop()
+        M.renders = M.renders + 1
       end 
-      love.graphics.origin()
     end
   end
+
 
   if needs_sorting then 
     ecs.sort({'node'}, function(lhs, rhs)
@@ -37,16 +50,18 @@ end
 function M.getTransform(entity)
   local parent = entity 
   local tf = entity:get('transform')
+  if not tf then return nil end
   if not tf._transform then 
     tf._transform = love.math.newTransform()
   end 
   local transform = tf._transform
   repeat 
     tf = parent:get('transform')
+    local x,y = floor(tf.x), floor(tf.y)
     transform:reset()
     transform:scale(tf.sx, tf.sy)
     transform:rotate(tf.r)
-    transform:translate(floor(tf.x), floor(tf.y))
+    transform:translate(x, y)
     parent = entity:get('node').parent 
   until not parent
   return transform

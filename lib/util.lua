@@ -197,6 +197,18 @@ end
 math.lerp = function(a,b,t) 
   return a * (1-t) + b * t 
 end
+math.prec = function(x,places,round_up)
+  places = 10^places
+  if round_up then 
+    return math.ceil(x*places)/places
+  else
+    return math.floor(x*places)/places
+  end
+end
+-- round to nearest multiple
+math.multiple = function(x,multiple)
+  return ((x + (multiple/2)) / multiple) * multiple
+end
 
 -- ETC
 
