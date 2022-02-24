@@ -5,6 +5,7 @@ local ecs = require "lib.ecs"
 local signal = require "lib.signal"
 local graph = require "systems.scenegraph"
 local bump = require "lib.bump"
+local chunk = require 'lib.chunk'
 
 local floor = math.floor
 
@@ -27,6 +28,7 @@ local tiles = {
 }
 local tile_types = table.keys(tiles)
 local world = bump.newWorld()
+local chunker = chunk.new()
 
 local base = {
   name = 'base',
@@ -231,24 +233,23 @@ function M.generate(x,y)
     for cy = chunky-1, chunky+1 do 
       local chunk_key = poskey(cx,cy)
       if not chunk_made[chunk_key] then
-        chunk_made[chunk_key] = true
+        chunk_made[chunk_key] = {cx=cx,cy=cy}
  
         -- place dirt/minerals
         for x = cx * size, (cx + 1) * size - 1, TILE_SIZE do 
           for y = cy * size, (cy + 1) * size - 1, TILE_SIZE do 
             local tile = M._getTileType(x,y)
             if tile then
-              ecs.entity{
+              world:add(ecs.entity{
                 transform = { x=x, y=y },
                 mapTile = { type=tile.type, value=tile.name }
-              }
+              }, x, y, TILE_SIZE, TILE_SIZE)
             end
           end -- y
         end -- x 
       end
     end -- cy
-  end -- cx
- 
+  end -- cx 
 end
 
 function M.debug()
@@ -299,7 +300,11 @@ function M.update(dt)
     -- generate chunks as explorers explore
     local tx, ty 
     for entity, tf, _ in ecs.filter('transform', 'mapExplorer') do 
-      M.generate(graph.getTransform(entity):transformPoint(0, 0))
+      tx, ty = graph.getTransform(entity):transformPoint(0, 0)
+      M.generate(tx, ty)
+
+      -- update changed tiles 
+      -- ... 
     end
 
     -- update changed tiles 

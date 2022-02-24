@@ -58,10 +58,13 @@ function M.getTransform(entity)
   repeat 
     tf = parent:get('transform')
     local x,y = floor(tf.x), floor(tf.y)
+    local ox,oy = floor(tf.ox), floor(tf.oy)
     transform:reset()
-    transform:scale(tf.sx, tf.sy)
-    transform:rotate(tf.r)
-    transform:translate(x, y)
+    transform:setTransformation(
+      floor(tf.x), floor(tf.y), tf.r,
+      tf.sx, tf.sy, floor(tf.ox), floor(tf.oy),
+      0, 0
+    )
     parent = entity:get('node').parent 
   until not parent
   return transform
