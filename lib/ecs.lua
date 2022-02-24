@@ -13,7 +13,6 @@ local entities = {} -- { [entity-id]:entity }
 local entity_id_list = {}
 local components = {}
 local component_names = {}
-local filters = {}
 
 -- http://lua-users.org/wiki/BitUtils
 -- local function testflag(set, flag)
@@ -45,15 +44,43 @@ local function bitoper(a, b, oper)
    return r
 end
 
-local function testflag(a, b)
-  return bitoper(a, b, AND) == a
+-- returns TRUE if 'bitset' contains 'subset'
+local function testflag(subset, bitset)
+  return bitoper(subset, bitset, AND) == subset
+end
+
+local filters = {}
+local filter_count = {}
+function M._updateFilter(entity)
+  if not filters[entity.bitset] then 
+    filters[entity.bitset] = {}
+    filter_count[entity.bitset] = 0
+  end
+
+  for bitset, entities in pairs(filters) do 
+    if testflag(entity.bitset, bitset) then 
+      entities[entity.id] = true
+      filter_count[entity.bitset] = filter_count[entity.bitset] + 1
+    else 
+      entities[entity.id] = nil
+      filter_count[entity.bitset] = filter_count[entity.bitset] - 1
+    end
+  end
+end
+
+function M._getFilterEntities(bitset)
+  if not filters[bitset] then 
+    filters[bitset] = {}
+    filter_count[bitset] = 0
+  end
+  return filters[bitset]
 end
 
 function M.on(name, ...)
   return signal.on('ecs.'..tostring(name), ...)
 end
 
-M.add_on_null_get = true
+M.add_null_component = true
 
 function M.entity(initial)
   local entity = setmetatable({
@@ -65,7 +92,7 @@ function M.entity(initial)
       local name
       for k = 1, select('#', ...) do 
         name = select(k, ...)
-        if M.add_on_null_get then 
+        if M.add_null_component then 
           if not components[name].entity[self.id] then 
             self[name] = true
           end
@@ -77,6 +104,9 @@ function M.entity(initial)
       return unpack(complist)
     end
   }, {
+    __tostring = function(t)
+      return string.format('entity-%d-%d',t.id,t.bitset)
+    end,
     __index = function(t, k)
       -- component getter (or normal table getter if failed)
       return components[k] and components[k].entity[t.id] or rawget(t, k)
@@ -92,19 +122,21 @@ function M.entity(initial)
         end
 
         -- add component 
-        if v ~= nil then 
-          t.bitset = setflag(t.bitset, components[k].id)
+        if v ~= nil then
+          if not components[k].entity[t.id] then 
+            t.bitset = setflag(t.bitset, components[k].id)
+            M._updateFilter(t)
+          end
+          -- trigger added component (even if it was already there)
           components[k].entity[t.id] = v 
           signal.emit('ecs.added.component', t, k)
-        end
-        
-        if components[k].entity[t.id] then 
+                
+        elseif components[k].entity[t.id]  then 
           -- remove component 
-          if v == nil then 
-            t.bitset = clrflag(t.bitset, components[k].id)
-            signal.emit('ecs.removed.component', t, k)
-          end
-          components[k].entity[t.id] = v 
+          t.bitset = clrflag(t.bitset, components[k].id)
+          M._updateFilter(t)
+          signal.emit('ecs.removed.component', t, k)
+          components[k].entity[t.id] = nil
         end
       end 
     end
@@ -126,6 +158,7 @@ end
 
 function M.component(name, default_value)
   if not components[name] then 
+    M._getFilterEntities(component_id)
     components[name] = {
       id = component_id,
       default = default_value,
@@ -149,6 +182,10 @@ function M.sort(names, sortf)
   end)
 end
 
+function M.count(...)
+  return filter_count[M.group(...)] or 0
+end
+
 -- generate bitset from names
 function M.group(...)
   local bitset = 0
@@ -167,18 +204,22 @@ end
 function M.filter(...)
   local names = {...}
   local bitset = M.group(...)
-  
-  local filtered = {}
-  for _, e in ipairs(entity_id_list) do 
-    if entities[e] and testflag(bitset, entities[e].bitset) then 
-      table.insert(filtered, entities[e])
-    end
-  end
-  local i = 0
+
+  -- local list = M._getFilterEntities(bitset)
+
+  local e = 1
+  local len = #entity_id_list  
   return function()
-    i = i + 1
-    if i > #filtered then return nil end
-    return filtered[i], filtered[i]:get(unpack(names)) 
+    local ent, good
+    repeat 
+      if e > len then return end 
+      ent = entities[entity_id_list[e]] 
+      good = ent and testflag(bitset, ent.bitset)
+      e = e + 1
+    until good
+    if good then 
+      return ent, ent:get(unpack(names))
+    end
   end
 end
 

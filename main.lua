@@ -11,14 +11,12 @@ local signal = require "lib.signal"
 local graph = require "systems.scenegraph"
 require "systems.image"
 local map = require "systems.map"
-require "systems.playercontrol"
+local playercontrol = require "systems.playercontrol"
 
 --[[
   [x] draw player
   [ ] generate world
 ]]
-
-local canv
 
 function love.load()
   love.graphics.setBackgroundColor(62/255, 39/255, 35/255)
@@ -37,19 +35,28 @@ function love.load()
   --   print(i, math.floor(i / 4))
   -- end
   map.new(200,200)
-
-  canv = love.graphics.newCanvas()
 end
 
+local profile = require 'lib.profile'
 function love.update(dt)
-  signal.emit('update', dt)
+  -- profile.start()
+
+  map.update(dt)
+  playercontrol.update(dt)
+
+  -- signal.emit('update', dt)
+  -- profile.stop()
+end
+
+function love.quit()
+  -- print(profile.report(10))
 end
 
 local xoff, yoff = 0, 0
 function love.draw()
   local lg = love.graphics
   local w, h = game.getDimensions()
-  for entity, tf, _ in ecs.filter('transform', 'cameraFocus') do 
+  for entity, tf, _ in ecs.filter('transform', 'cameraFocus') do
     game.draw(function()
       lg.push()
       lg.translate(-tf.x + (w/2),-tf.y + (h/2))

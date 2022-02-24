@@ -118,7 +118,7 @@ function M._getTileType(x,y,mod,_prev_tile)
   if rooms ~= 0 then 
     return nil 
   end
-  -- already generated
+  -- tile already generated
   if tile_noise[key] then 
     return tile_noise[key]
   end
@@ -126,12 +126,10 @@ function M._getTileType(x,y,mod,_prev_tile)
   -- is it not dirt?
   if n < (RESOURCE_SIZE_MODIFIER+RESOURCE_SURROUNDING_MODIFIER)*mod then 
     if n < RESOURCE_SIZE_MODIFIER*mod then 
-      -- resource tile
-      if not tile_noise[key] then 
-        -- TODO: choose random weighted
-        _prev_tile = _prev_tile or tiles.iron
-        tile_noise[key] = _prev_tile
-      end
+      -- resource tile 
+      -- TODO: choose random weighted
+      _prev_tile = _prev_tile or tiles.iron
+      tile_noise[key] = _prev_tile
     else
       -- supporting tile
       tile_noise[key] = tiles.dirt
@@ -159,8 +157,6 @@ end
 function M._getRoomSize(info)
   return info.columns * TILE_SIZE, math.min(1, math.floor(#info.map / info.columns)) * TILE_SIZE
 end
-
-local next_room
 
 function M._createRoom(chunkx, chunky, is_base)
   local chunk_key = poskey(chunkx,chunky)
@@ -190,14 +186,14 @@ function M._createRoom(chunkx, chunky, is_base)
     
     if tile then 
       if tile.type == 'tile' then 
-        tile = tiles[tile.value]
+        local tile_info = tiles[tile.value]
 
         local ex, ey
         ex = ( x-ox ) * TILE_SIZE
         ey = ( y-oy ) * TILE_SIZE
         ecs.entity{
           transform = { x=ex, y=ey }, 
-          mapTile = { room_name=map_info.name, type=tile.type, value=tile.value }
+          mapTile = { room_name=map_info.name, type=tile_info.type, value=tile_info.name }
         }
 
         -- calculate total size of room
@@ -236,7 +232,6 @@ function M.generate(x,y)
       local chunk_key = poskey(cx,cy)
       if not chunk_made[chunk_key] then
         chunk_made[chunk_key] = true
-        log.debug('add chunk',chunk_key)
  
         -- place dirt/minerals
         for x = cx * size, (cx + 1) * size - 1, TILE_SIZE do 
@@ -245,7 +240,7 @@ function M.generate(x,y)
             if tile then
               ecs.entity{
                 transform = { x=x, y=y },
-                mapTile = { type=tile.type, value=tile.value }
+                mapTile = { type=tile.type, value=tile.name }
               }
             end
           end -- y
@@ -299,7 +294,7 @@ function M.new(x,y)
 end
 
 local update_timer = 0
-signal.on('update', function(dt)
+function M.update(dt)
   if floor(update_timer) % 2 == 0 then 
     -- generate chunks as explorers explore
     local tx, ty 
@@ -310,11 +305,9 @@ signal.on('update', function(dt)
     -- update changed tiles 
     for entity, tf, maptile in ecs.filter('transform', 'mapTile') do 
       if maptile.needs_update then 
-        if maptile.value ~= 'dirt' then 
-          log.debug(maptile.value)
-        end
         local path = tiles[maptile.value].image
         local ent_batch = M._getTileBatch(path).node.renderable
+
 
         -- remove previous tile
         if maptile.batch_id and maptile.current_batch ~= ent_batch then 
@@ -330,6 +323,10 @@ signal.on('update', function(dt)
     end
   end
   update_timer = update_timer + dt
-end)
+end
+
+-- signal.on('update', function(dt)
+--   M.update(dt)
+-- end)
 
 return M 

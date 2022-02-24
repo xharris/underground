@@ -1,7 +1,9 @@
+local M = {}
+
 local ecs = require "lib.ecs"
 local signal = require "lib.signal"
 
-signal.on('update', function(dt)
+function M.update(dt)
   local keydown = love.keyboard.isDown
 
   for entity, pc, transform in ecs.filter('playerControl', 'transform') do 
@@ -21,4 +23,10 @@ signal.on('update', function(dt)
     transform.x = transform.x + vx * dt 
     transform.y = transform.y + vy * dt 
   end
-end)
+end
+
+-- signal.on('update', function(dt)
+--   M.update(dt)
+-- end)
+
+return M
