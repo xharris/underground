@@ -15,6 +15,8 @@ local CHUNK_SIZE = math.multiple(200, TILE_SIZE)
 local RESOURCE_SURROUNDING_MODIFIER = 0.07 -- higher = more blocks surrounding resource
 local RESOURCE_SIZE_MODIFIER = 0.12 -- higher = larger amounts of resources spawn
 
+local chunker = chunk.new(500)
+
 local tiles = {
   dirt = {
     name = 'dirt',
@@ -28,7 +30,6 @@ local tiles = {
 }
 local tile_types = table.keys(tiles)
 local world = bump.newWorld()
-local chunker = chunk.new()
 
 local base = {
   name = 'base',
@@ -193,10 +194,11 @@ function M._createRoom(chunkx, chunky, is_base)
         local ex, ey
         ex = ( x-ox ) * TILE_SIZE
         ey = ( y-oy ) * TILE_SIZE
-        ecs.entity{
+        local new_ent = ecs.entity{
           transform = { x=ex, y=ey }, 
           mapTile = { room_name=map_info.name, type=tile_info.type, value=tile_info.name }
         }
+        chunker:add(new_ent, ex, ey, TILE_SIZE, TILE_SIZE)
 
         -- calculate total size of room
         if not l or ex < l then l = ex end 
@@ -240,10 +242,12 @@ function M.generate(x,y)
           for y = cy * size, (cy + 1) * size - 1, TILE_SIZE do 
             local tile = M._getTileType(x,y)
             if tile then
-              world:add(ecs.entity{
+              local new_ent = ecs.entity{
                 transform = { x=x, y=y },
                 mapTile = { type=tile.type, value=tile.name }
-              }, x, y, TILE_SIZE, TILE_SIZE)
+              }
+              world:add(new_ent, x, y, TILE_SIZE, TILE_SIZE)
+              chunker:add(new_ent, x, y, TILE_SIZE, TILE_SIZE)
             end
           end -- y
         end -- x 
@@ -290,43 +294,44 @@ end
   set the seed
 ]]
 function M.new(x,y)
+  x, y = x or 0, y or 0
   M._createRoom(x, y, true)  
   M.generate(x, y)  
 end
 
 local update_timer = 0
 function M.update(dt)
-  if floor(update_timer) % 2 == 0 then 
-    -- generate chunks as explorers explore
-    local tx, ty 
-    for entity, tf, _ in ecs.filter('transform', 'mapExplorer') do 
-      tx, ty = graph.getTransform(entity):transformPoint(0, 0)
-      M.generate(tx, ty)
-
-      -- update changed tiles 
-      -- ... 
-    end
+  -- generate chunks as explorers explore
+  local tx, ty 
+  for entity, tf, _ in ecs.filter('transform', 'mapExplorer') do 
+    tx, ty = graph.getTransform(entity):transformPoint(0, 0)
+    M.generate(tx, ty)
+    chunker:explore(entity, tx, ty)
 
     -- update changed tiles 
-    for entity, tf, maptile in ecs.filter('transform', 'mapTile') do 
-      if maptile.needs_update then 
-        local path = tiles[maptile.value].image
-        local ent_batch = M._getTileBatch(path).node.renderable
+    -- ... 
+  end
 
+  -- update changed tiles 
+  for entity in chunker:iterate() do 
+    local tf, maptile = entity:get('transform', 'mapTile')
+    if maptile.needs_update then 
+      local path = tiles[maptile.value].image
+      local ent_batch = M._getTileBatch(path).node.renderable
 
-        -- remove previous tile
-        if maptile.batch_id and maptile.current_batch ~= ent_batch then 
-          maptile.current_batch:set(maptile.batch_id, 0, 0, 0, 0, 0)
-          maptile.batch_id = nil
-        end 
-        -- add tile
-        maptile.current_batch = ent_batch
-        maptile.batch_id = ent_batch:add(tf.x, tf.y)
+      -- remove previous tile
+      if maptile.batch_id and maptile.current_batch ~= ent_batch then 
+        maptile.current_batch:set(maptile.batch_id, 0, 0, 0, 0, 0)
+        maptile.batch_id = nil
+      end 
+      -- add tile
+      maptile.current_batch = ent_batch
+      maptile.batch_id = ent_batch:add(tf.x, tf.y)
 
-        maptile.needs_update = false 
-      end
+      maptile.needs_update = false 
     end
   end
+
   update_timer = update_timer + dt
 end
 

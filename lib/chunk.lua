@@ -18,6 +18,7 @@ local function poskey(x,y)
 end
 
 function M.new(chunk_size)
+  print('size',chunk_size)
   return setmetatable({
     chunk_size = chunk_size or 200,
     _world = bump.newWorld(),

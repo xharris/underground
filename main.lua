@@ -19,8 +19,6 @@ local chunk = require 'lib.chunk'
   [ ] generate world
 ]]
 
-local chunker = chunk.new(200)
-
 function love.load()
   love.graphics.setBackgroundColor(62/255, 39/255, 35/255)
   game.init()
@@ -33,28 +31,7 @@ function love.load()
     mapExplorer = true,
     cameraFocus = true
   }
-  ecs.entity{
-    transform = { x=100, y=100 },
-    node = { z = 100 },
-    image = { path='assets/images/player.png' },
-    playerControl = { max_velocity=100 },
-    mapExplorer = true
-  }
-  -- map.new(200,200)
-
-  for x = 0, game.getWidth(), 32 do 
-    for y = 0, game.getHeight(), 32 do 
-      chunker:add(
-        ecs.entity{
-          transform = { x=x, y=y, ox=8, oy=8 },
-          node = true,
-          image = { path='assets/images/dirt.png' },
-          spin = { v=10 }
-        }, 
-      x, y, 16, 16)
-    end
-  end
-
+  map.new()
 end
 
 local profile = require 'lib.profile'
@@ -62,18 +39,8 @@ function love.update(dt)
   -- profile.start()
 
   ecs.update(dt)
-  -- map.update(dt)
+  map.update(dt)
   playercontrol.update(dt)
-
-  for ent, tf, mapExplorer in ecs.filter('transform','mapExplorer') do 
-    local tx, ty = graph.getTransform(ent):transformPoint(0, 0)
-    chunker:explore(ent, tx, ty)
-  end
-
-  for entity in chunker:iterate() do 
-    local tf, spin = entity:get('transform', 'spin')
-    tf.r = tf.r + spin.v * dt 
-  end
 
   -- profile.stop()
 end
