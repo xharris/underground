@@ -1,8 +1,6 @@
 local ecs = require "lib.ecs"
 local c = ecs.component 
 
-c('spin', {v=10})
-
 -- scenegraph
 c("node", { renderable=nil, visible=true, parent=nil, z=0, _last_z=0, size={0,0} })
 c("transform", { x=0, y=0, sx=1, sy=1, r=0, ox=0, oy=0 })
@@ -10,13 +8,15 @@ c("transform", { x=0, y=0, sx=1, sy=1, r=0, ox=0, oy=0 })
 -- image
 c('image', { path=nil })
 
--- maploader
+-- map
 c('mapRoom', { area={x=0,y=0,w=0,h=0} })
 c('mapTile', { room_name=nil, value='dirt', image='', needs_update=true })
 c('mapExplorer', true)
 c('mapTileBatch', {})
+c('mapLighting', {})
+c('lightExplorer', {})
 
 -- playerControl
 c('playerControl', { max_velocity=40 })
 
-c('cameraFocus', {})
+c('cameraFocus', { x=0, y=0 })

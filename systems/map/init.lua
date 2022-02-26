@@ -6,6 +6,7 @@ local signal = require "lib.signal"
 local graph = require "systems.scenegraph"
 local bump = require "lib.bump"
 local chunk = require 'lib.chunk'
+local lighting = require "systems.map.lighting"
 
 local floor = math.floor
 
@@ -112,8 +113,8 @@ local tile_stats = {}
 local tile_noise = {} -- 'x-y':tile type
 function M._getTileType(x,y,mod,_prev_tile)
   x, y = math.multiple(x,TILE_SIZE), math.multiple(y,TILE_SIZE)
-  local key = poskey(x,y)
   mod = mod or 1
+  local key = poskey(x,y)
   local n = love.math.noise(x/340,y/340)
 
   -- room already here
@@ -133,9 +134,11 @@ function M._getTileType(x,y,mod,_prev_tile)
       -- TODO: choose random weighted
       _prev_tile = _prev_tile or tiles.iron
       tile_noise[key] = _prev_tile
+      return tile_noise[key]
     else
       -- supporting tile
       tile_noise[key] = tiles.dirt
+      return tile_noise[key]
     end
 
     if not tile_stats[tile_noise[key].name] then 
@@ -297,6 +300,7 @@ function M.new(x,y)
   x, y = x or 0, y or 0
   M._createRoom(x, y, true)  
   M.generate(x, y)  
+  lighting.setup()
 end
 
 local update_timer = 0
@@ -331,6 +335,8 @@ function M.update(dt)
       maptile.needs_update = false 
     end
   end
+
+  lighting.update(dt)
 
   update_timer = update_timer + dt
 end

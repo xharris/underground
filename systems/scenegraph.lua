@@ -24,18 +24,21 @@ function M.draw()
       if not transform then 
         love.graphics.draw(node.renderable)
 
-      elseif 
-        game.inside(transform:transformPoint(0,0)) and 
-        game.inside(transform:transformPoint(node.size[1],node.size[2])) and 
-        game.inside(transform:transformPoint(node.size[1],0)) and 
-        game.inside(transform:transformPoint(0,node.size[2])) 
-      then 
-        love.graphics.push()
-        love.graphics.applyTransform(transform)
-        love.graphics.draw(node.renderable)
-        love.graphics.pop()
-        M.renders = M.renders + 1
-      end 
+      else
+        local tx, ty = transform:transformPoint(0,0)
+        if 
+          game.inside(tx, ty) and 
+          game.inside(tx + node.size[1], ty + node.size[2]) and 
+          game.inside(tx + node.size[1], ty) and 
+          game.inside(tx, ty + node.size[2]) 
+        then 
+          love.graphics.push()
+          love.graphics.applyTransform(transform)
+          love.graphics.draw(node.renderable)
+          love.graphics.pop()
+          M.renders = M.renders + 1
+        end 
+      end
     end
   end
 
@@ -49,14 +52,14 @@ end
 
 function M.getTransform(entity)
   local parent = entity 
-  local tf = entity:get('transform')
+  local tf = entity.transform
   if not tf then return nil end
   if not tf._transform then 
     tf._transform = love.math.newTransform()
   end 
   local transform = tf._transform
   repeat 
-    tf = parent:get('transform')
+    tf = parent.transform
     local x,y = floor(tf.x), floor(tf.y)
     local ox,oy = floor(tf.ox), floor(tf.oy)
     transform:reset()
@@ -65,7 +68,7 @@ function M.getTransform(entity)
       tf.sx, tf.sy, floor(tf.ox), floor(tf.oy),
       0, 0
     )
-    parent = entity:get('node').parent 
+    parent = entity.node.parent 
   until not parent
   return transform
 end

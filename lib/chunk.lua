@@ -3,22 +3,9 @@ local M = {
 }
 local bump = require 'lib.bump'
 
-M.chunks = {
-  --[[
-    ['x-y'] = {
-      loaded = 
-    }
-  ]]
-}
-
 local Manager = {}
 
-local function poskey(x,y)
-  return f('%dx%d',x,y)
-end
-
 function M.new(chunk_size)
-  print('size',chunk_size)
   return setmetatable({
     chunk_size = chunk_size or 200,
     _world = bump.newWorld(),
@@ -29,6 +16,10 @@ end
 
 function Manager:add(obj, x, y, w, h)
   self._world:add(obj, x, y, w, h)
+end
+
+function Manager:remove(obj)
+  self._world:remove(obj)
 end
 
 function Manager:update(obj, x, y, w, h)
